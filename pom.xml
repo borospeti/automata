@@ -8,10 +8,16 @@
   <name>Q-Free finite state automata</name>
   <version>1.0-SNAPSHOT</version>
   <dependencies>
-    <dependency>
+    <!--<dependency>
       <groupId>dk.brics.automaton</groupId>
       <artifactId>automaton</artifactId>
       <version>1.11-8</version>
+    </dependency>-->
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.10</version>
+      <scope>test</scope>
     </dependency>
   </dependencies>
 

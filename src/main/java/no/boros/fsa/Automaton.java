@@ -1,5 +1,4 @@
 package no.boros.fsa;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -7,15 +6,17 @@ import java.util.Map;
 
 public class Automaton
 {
-    public static final char FINAL_SYMBOL = 255;
+    public static final byte FINAL_SYMBOL = (byte)0xff;
 
-    private static class Transition
+    private int stateCount = 0;
+
+    private class Transition
         implements Comparable<Transition>
     {
-        public final char symbol;
+        public final byte symbol;
         public State state;
 
-        public Transition(char symbol, State state)
+        public Transition(byte symbol, State state)
         {
             this.symbol = symbol;
             this.state = state;
@@ -25,8 +26,8 @@ public class Automaton
         public int compareTo(Transition other)
         {
             if (this == other) return 0;
-            if (this.symbol < other.symbol) return -1;
-            if (this.symbol > other.symbol) return 1;
+            int bComp = BString.compareBytes(this.symbol, other.symbol);
+            if (bComp != 0) return bComp;
             if (this.state.id < other.state.id) return -1;
             if (this.state.id > other.state.id) return 1;
             return 0;
@@ -34,11 +35,11 @@ public class Automaton
 
         public String toString()
         {
-            return "(" + symbol + "->" + state.getId() + ")";
+            return "(" + BString.byteToString(symbol) + "->S" + state.getId() + ")";
         }
     }
 
-    private static class TransitionList
+    private class TransitionList
         implements Comparable<TransitionList>
     {
         private ArrayList<Transition> list = new ArrayList<>();
@@ -94,7 +95,7 @@ public class Automaton
             return null;
         }
 
-        public Transition find(char sy)
+        public Transition find(byte sy)
         {
             for (Transition t : list) {
                 if (t.symbol == sy) return t;
@@ -102,7 +103,7 @@ public class Automaton
             return null;
         }
 
-        public void append(char symbol, State state)
+        public void append(byte symbol, State state)
         {
             list.add(new Transition(symbol, state));
         }
@@ -126,15 +127,14 @@ public class Automaton
         }
     }
 
-    private static class State
+    private class State
     {
-        private static int count = 0;
         private final int id;
         private final TransitionList transitionList = new TransitionList();
 
         public State()
         {
-            id = count++;
+            id = stateCount++;
         }
 
         public boolean isFinal()
@@ -147,7 +147,7 @@ public class Automaton
             return !transitionList.isEmpty();
         }
 
-        public State getChild(char sy)
+        public State getChild(byte sy)
         {
             Transition t = transitionList.find(sy);
             if (null == t ) return null;
@@ -169,14 +169,14 @@ public class Automaton
             }
         }
 
-        public State addEmptyChild(char sy)
+        public State addEmptyChild(byte sy)
         {
             State child = new State();
             transitionList.append(sy, child);
             return child;
         }
 
-        public State addChild(char sy, State child)
+        public State addChild(byte sy, State child)
         {
             transitionList.append(sy, child);
             return child;
@@ -207,34 +207,30 @@ public class Automaton
 
 
     private HashMap<TransitionList, State> register = new HashMap<>();
-    private State q0 = new State();
-    private State qf = null;
-    //private String previousInput;
-    private boolean finalized;
+    private State qStart = new State();
+    private State qFinal = null;
+    private BString previousInput = null;
+    private boolean finalized = false;
     // PackedAutomaton packed;       /**< Packed automaton.             */
 
-    private int getCPLength(String input)
+    private int getCPLength(BString input)
     {
-        if (q0 == null) return 0;
-
         int l = 0;
-        State state = q0;
+        State state = qStart;
         while (l < input.length()) {
-            state = state.getChild(input.charAt(l));
+            state = state.getChild(input.byteAt(l));
             if (state == null) return l;
             l++;
         }
         return l;
     }
 
-    private State getCPLastState(String input)
+    private State getCPLastState(BString input)
     {
-        if (q0 == null) return null;
-
         int l = 0;
-        State state = q0;
+        State state = qStart;
         while (l < input.length()) {
-            State next = state.getChild(input.charAt(l));
+            State next = state.getChild(input.byteAt(l));
             if (next == null) return state;
             state=next;
             l++;
@@ -263,31 +259,47 @@ public class Automaton
         }
     }
 
-    private void addSuffix(State state, String suffix)
+    private void addSuffix(State state, BString suffix)
     {
         State current = state;
         State child;
 
         for (int l = 0; l < suffix.length(); ++l) {
-            child = current.addEmptyChild(suffix.charAt(l));
+            child = current.addEmptyChild(suffix.byteAt(l));
             current = child;
         }
 
-        if (null == qf) {
-            qf = current.addEmptyChild(FINAL_SYMBOL);
+        if (null == qFinal) {
+            qFinal = current.addEmptyChild(FINAL_SYMBOL);
         } else {
-            current.addChild(FINAL_SYMBOL, qf);
+            current.addChild(FINAL_SYMBOL, qFinal);
         }
     }
 
     public void insertSortedString(String input)
     {
-        if (null == q0) {
-            return;
+        insertSortedString(new BString(input));
+    }
+
+    public void insertSortedString(BString input)
+    {
+        if (finalized) {
+            throw new IllegalArgumentException("Automaton is finalized, cannot insert more strings.");
         }
 
+        if (null != previousInput) {
+            if (previousInput.compareTo(input) == 0) return;  // already inserted
+            if (previousInput.compareTo(input) == 1) {
+                // trying to insert a string in the wrong order
+                throw new IllegalArgumentException("Out-of-order string inserted, '" +
+                                                   previousInput.toString()  + "' > '" +
+                                                   input.toString() + "'.");
+            }
+        }
+        previousInput = input;
+
         State lastState = getCPLastState(input);
-        String currentSuffix = input.substring(getCPLength(input), input.length());
+        BString currentSuffix = input.substring(getCPLength(input), input.length());
 
         if (lastState.hasChildren()) {
             replaceOrRegister(lastState);
@@ -297,13 +309,18 @@ public class Automaton
 
     public void finalize()
     {
-        replaceOrRegister(q0);
+        replaceOrRegister(qStart);
+        finalized = true;
     }
+
+
+    // mostly for debugging
+
 
     public void dump()
     {
-        System.out.println("Start: " + q0);
-        System.out.println("Final: " + qf);
+        System.out.println("Start: " + qStart);
+        System.out.println("Final: " + qFinal);
         for (Map.Entry<TransitionList, State>  entry : register.entrySet()) {
             System.out.println(entry.getValue());
         }
@@ -311,7 +328,7 @@ public class Automaton
 
     public void traverse()
     {
-        dfs(q0);
+        dfs(qStart);
     }
 
     private void dfs(State state)
@@ -320,6 +337,34 @@ public class Automaton
         TransitionList tlist = state.getTransitionList();
         for (Transition t : tlist.getTransitions()) {
             dfs(t.state);
+        }
+    }
+
+    public void dumpDict()
+    {
+        ArrayList<Byte> word = new ArrayList<>();
+        dumpDict(qStart, word);
+    }
+
+    private void dumpDict(State state, ArrayList<Byte> word)
+    {
+        TransitionList tlist = state.getTransitionList();
+        for (Transition t : tlist.getTransitions()) {
+            if (t.symbol == FINAL_SYMBOL) {
+                try {
+                    byte[] temp = new byte[word.size()];
+                    for (int i = 0; i < word.size(); ++i) {
+                        temp[i] = word.get(i);
+                    }
+                    System.out.println(new String(temp, "utf-8"));
+                } catch (java.io.UnsupportedEncodingException e) {
+                    throw new RuntimeException(e);
+                }
+            } else {
+                word.add(t.symbol);
+                dumpDict(t.state, word);
+                word.remove(word.size() - 1);
+            }
         }
     }
 
