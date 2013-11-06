@@ -2,10 +2,10 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.qfree.qbrix</groupId>
+  <groupId>no.boros</groupId>
   <artifactId>automata</artifactId>
   <packaging>jar</packaging>
-  <name>Q-Free finite state automata</name>
+  <name>Finite state automata</name>
   <version>1.0-SNAPSHOT</version>
   <dependencies>
     <!--<dependency>
@@ -40,7 +40,7 @@
         <configuration>
           <archive>
             <manifest>
-            <mainClass>com.qfree.qbrix.automata.Automata</mainClass>
+            <mainClass>no.boros.fsa.Automaton</mainClass>
             </manifest>
           </archive>
           <descriptorRefs>
