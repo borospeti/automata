@@ -1,5 +1,7 @@
 package no.boros.fsa;
 
+import java.io.IOException;
+
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -7,6 +9,7 @@ public class FSATest
 {
     @Test
     public void testInsert()
+        throws IOException
     {
         Automaton a = new Automaton();
         a.insertSortedString("böfc mufc");
@@ -77,5 +80,22 @@ public class FSATest
         assertFalse(state.isFinal());
     }
 
+    @Test
+    public void testReadWrite()
+        throws IOException
+    {
+        Automaton a = new Automaton();
+        a.insertSortedString("böfc mufc");
+        a.insertSortedString("böfc");
+        a.insertSortedString("mufc böfc");
+        a.insertSortedString("mufc");
+        FSA fsa = a.getFSA();
+        System.out.println("written:");
+        fsa.dumpDict();
+        fsa.write("testfsa.fsa");
+        FSA fsa2 = FSA.read("testfsa.fsa");
+        System.out.println("read:");
+        fsa2.dumpDict();
+    }
 
 }

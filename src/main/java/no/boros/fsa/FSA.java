@@ -3,7 +3,7 @@ package no.boros.fsa;
 import java.util.ArrayList;
 
 import java.io.IOException;
-import java.io.FileOutputStream;
+import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
@@ -11,7 +11,7 @@ import java.nio.channels.FileChannel;
 public class FSA
 {
     private static final int FSA_MAGIC = 0x62D80AB5;
-    private static final int CHUNK_SIZE = 4096;
+    private static final int CHUNK_SIZE = 1048576;
 
     private final byte[] transSymbols;
     private final int[] transStates;
@@ -98,9 +98,9 @@ public class FSA
     public void write(String fileName)
         throws IOException
     {
-        FileOutputStream out = null;
+        RandomAccessFile out = null;
         try {
-            out = new FileOutputStream(fileName);
+            out = new RandomAccessFile(fileName, "rw");
             FileChannel file = out.getChannel();
 
             long offset = 0L;
@@ -136,6 +136,58 @@ public class FSA
             if (out != null) out.close();
         }
     }
+
+    public static FSA read(String fileName)
+        throws IOException
+    {
+        RandomAccessFile in = null;
+        byte[] symbols;
+        int[] states;
+        int start;
+        try {
+            in = new RandomAccessFile(fileName, "r");
+            FileChannel file = in.getChannel();
+
+            long offset = 0L;
+            int headerSize = 4 * 3;
+            ByteBuffer header = file.map(FileChannel.MapMode.READ_ONLY, offset, headerSize);
+            int magic = header.getInt();
+            int length = header.getInt();
+            start = header.getInt();
+            if (magic != FSA_MAGIC) throw new IOException("Invalid FSA file - wrong magic.");
+            if (start < 0 || length < start + 256) throw new IOException("Invalid FSA file - wrong magic.");
+            offset += headerSize;
+
+            symbols = new byte[length];
+            for (int pos = 0; pos < length; ) {
+                int chunk = pos + CHUNK_SIZE < length ? CHUNK_SIZE : length - pos;
+                ByteBuffer buf = file.map(FileChannel.MapMode.READ_ONLY, offset, chunk);
+                buf.get(symbols, pos, chunk);
+                pos += chunk;
+                offset += chunk;
+            }
+
+            states = new int[length];
+            for (int pos = 0; pos < length; ) {
+                int chunk = pos + CHUNK_SIZE < length ? CHUNK_SIZE : length - pos;
+                ByteBuffer buf = file.map(FileChannel.MapMode.READ_ONLY, offset, chunk * 4);
+                for (int i = pos; i < pos + chunk; ++i) {
+                  states[i] = buf.getInt();
+                }
+                pos += chunk;
+                offset += chunk * 4;
+            }
+
+            file.close();
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            if (in != null) in.close();
+        }
+
+        return new FSA(symbols, states, start);
+    }
+
 
     // mainly for debugging
 
