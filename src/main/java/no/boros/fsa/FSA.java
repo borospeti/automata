@@ -2,9 +2,17 @@ package no.boros.fsa;
 
 import java.util.ArrayList;
 
+import java.io.IOException;
+import java.io.FileOutputStream;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
 
 public class FSA
 {
+    private static final int FSA_MAGIC = 0x62D80AB5;
+    private static final int CHUNK_SIZE = 4096;
+
     private final byte[] transSymbols;
     private final int[] transStates;
     private final int startState;
@@ -87,6 +95,49 @@ public class FSA
         return lookup(new BString(string));
     }
 
+    public void write(String fileName)
+        throws IOException
+    {
+        FileOutputStream out = null;
+        try {
+            out = new FileOutputStream(fileName);
+            FileChannel file = out.getChannel();
+
+            long offset = 0L;
+            int headerSize = 4 * 3;
+            ByteBuffer header = file.map(FileChannel.MapMode.READ_WRITE, offset, headerSize);
+            header.putInt(FSA_MAGIC);
+            header.putInt(transSymbols.length);
+            header.putInt(startState);
+            offset += headerSize;
+
+            for (int pos = 0; pos < transSymbols.length; ) {
+                int chunk = pos + CHUNK_SIZE < transSymbols.length ? CHUNK_SIZE : transSymbols.length - pos;
+                ByteBuffer buf = file.map(FileChannel.MapMode.READ_WRITE, offset, chunk);
+                buf.put(transSymbols, pos, chunk);
+                pos += chunk;
+                offset += chunk;
+            }
+
+            for (int pos = 0; pos < transStates.length; ) {
+                int chunk = pos + CHUNK_SIZE < transStates.length ? CHUNK_SIZE : transSymbols.length - pos;
+                ByteBuffer buf = file.map(FileChannel.MapMode.READ_WRITE, offset, chunk * 4);
+                for (int i = pos; i < pos + chunk; ++i) {
+                    buf.putInt(transStates[i]);
+                }
+                pos += chunk;
+                offset += chunk * 4;
+            }
+
+            file.close();
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            if (out != null) out.close();
+        }
+    }
+
+    // mainly for debugging
 
 
     public void dumpDict()
