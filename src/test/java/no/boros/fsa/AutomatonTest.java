@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.Charset;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -26,9 +27,6 @@ public class AutomatonTest
         // a.dump();
         // a.traverse();
         a.dumpDict();
-
-        FSA fsa = a.getFSA();
-        fsa.dumpDict();
     }
 
     @Test
@@ -62,7 +60,7 @@ public class AutomatonTest
         }
     }
 
-    @Test
+    @Ignore @Test
     public void testGetFSA()
         throws Exception
     {
@@ -82,7 +80,6 @@ public class AutomatonTest
         }
 
         FSA fsa = a.getFSA();
-        fsa.dumpDict();
     }
 
 

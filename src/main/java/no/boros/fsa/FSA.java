@@ -19,6 +19,73 @@ public class FSA
         startState = start;
     }
 
+    public class State
+    {
+        int state = startState;
+        boolean valid = true;
+
+        private State()
+        {
+        }
+
+        public boolean isValid()
+        {
+            return valid;
+        }
+
+        public boolean isFinal()
+        {
+            return valid && (transSymbols[state + (Automaton.FINAL_SYMBOL & 0xff)] == Automaton.FINAL_SYMBOL);
+        }
+
+        public void consume(byte symbol)
+        {
+            if (!valid) return;
+
+            if (transSymbols[state + (symbol & 0xff)] == symbol) {
+                state = transStates[state + (symbol & 0xff)];
+            } else {
+                valid = false;
+            }
+        }
+
+        public void consume(BString bString)
+        {
+            if (!valid) return;
+
+            for (int i = 0; i < bString.length(); ++i) {
+                byte symbol = bString.byteAt(i);
+                if (transSymbols[state + (symbol & 0xff)] == symbol) {
+                    state = transStates[state + (symbol & 0xff)];
+                } else {
+                    valid = false;
+                    return;
+                }
+            }
+        }
+
+        public void consume(String string)
+        {
+            consume(new BString(string));
+        }
+    }
+
+    public State start()
+    {
+        return new State();
+    }
+
+    public boolean lookup(BString bString)
+    {
+        State state = start();
+        state.consume(bString);
+        return state.isFinal();
+    }
+
+    public boolean lookup(String string)
+    {
+        return lookup(new BString(string));
+    }
 
 
 
