@@ -1,5 +1,7 @@
 package no.boros.fsa;
+
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -7,6 +9,7 @@ import java.util.Map;
 public class Automaton
 {
     public static final byte FINAL_SYMBOL = (byte)0xff;
+    private static final int SEARCH_OFFSET = 512;
 
     private int stateCount = 0;
 
@@ -309,9 +312,65 @@ public class Automaton
 
     public void finalize()
     {
-        replaceOrRegister(qStart);
-        finalized = true;
+        if (!finalized) {
+            replaceOrRegister(qStart);
+            register.put(qStart.getTransitionList(), qStart);
+            finalized = true;
+        }
     }
+
+
+    public FSA getFSA()
+    {
+        finalize();
+
+        BitSet offsetTable = new BitSet();
+        BitSet transTable = new BitSet();
+        HashMap<State, Integer> offsetMap = new HashMap<>(register.size());
+        int lastOffset = 0;
+
+        for (Map.Entry<TransitionList, State>  entry : register.entrySet()) {
+            int offset = transTable.length() - SEARCH_OFFSET;
+            if (offset < 0) offset = 0;
+            State state = entry.getValue();
+            while (true) {
+                if (!offsetTable.get(offset) &&
+                    !transTable.get(offset + (state.getTransitionList().get(0).symbol &0xff))) {
+                    boolean ok = true;
+                    for (int i = 1; i < state.getTransitionList().size(); ++i) {
+                        if (transTable.get(offset + (state.getTransitionList().get(i).symbol &0xff))) {
+                            ok = false;
+                            break;
+                        }
+                    }
+                    if (ok) break;
+                }
+                ++offset;
+            }
+            for (int i = 0; i < state.getTransitionList().size(); ++i) {
+                transTable.set(offset + (state.getTransitionList().get(i).symbol &0xff));
+            }
+            offsetTable.set(offset);
+            offsetMap.put(state, offset);
+            if (lastOffset < offset) lastOffset = offset;
+        }
+
+        byte[] symbols = new byte[lastOffset + 256];
+        int[] states = new int[lastOffset + 256];
+        for (Map.Entry<TransitionList, State>  entry : register.entrySet()) {
+            State state = entry.getValue();
+            int offset = offsetMap.get(state);
+            for (int i = 0; i < state.getTransitionList().size(); ++i) {
+                Transition t = state.getTransitionList().get(i);
+                symbols[offset + (t.symbol & 0xff)] = t.symbol;
+                Integer tOffset = offsetMap.get(t.state);
+                states[offset + (t.symbol & 0xff)] = tOffset != null ? tOffset : -1;
+            }
+        }
+
+        return new FSA(symbols, states, offsetMap.get(qStart));
+    }
+
 
 
     // mostly for debugging
