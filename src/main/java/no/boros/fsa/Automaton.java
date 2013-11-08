@@ -6,25 +6,78 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
+
+/**
+ * Implementation of Daciuk et.al.'s algorithm,
+ * "Incremental Construction of Minimal Acyclic Finite-State Automata"
+ * (http://www.eti.pg.gda.pl/~jandac/daciuk98.ps.gz)
+ *
+ * This class is not thread safe, and meant to be used single threaded only.
+ */
 public class Automaton
 {
+    /**
+     * Special symbol used for indication final (accepting) states.
+     * 0xff is used as it is not a valid UTF-8 byte (and 0x00 which
+     * is also invalid in UTF-8 is used for indication empty cells
+     * in the compacted representation.
+     */
     public static final byte FINAL_SYMBOL = (byte)0xff;
+
+    /**
+     * Backwards search offset when trying to insert a new state in the
+     * compact representation. Differente values have been tested, and
+     * increasing this over 512 does not give significant reduction in
+     * size.
+     */
     private static final int SEARCH_OFFSET = 512;
 
+    /**
+     * State counter, used for assigning unique state IDs.
+     */
     private int stateCount = 0;
 
+    /**
+     * Helper class representing a transition from one state to another.
+     * Pretty much a POJO with a comparator, so no getters/setters for
+     * the two simple public data fields.
+     */
     private class Transition
         implements Comparable<Transition>
     {
+        /**
+         * Symbol assigned to the transition - this will never change.
+         */
         public final byte symbol;
+        /**
+         * Destination state - this may get updated during the minimalization
+         * process.
+         */
         public State state;
 
+        /**
+         * Create a new transition with a given symbol to the given state.
+         *
+         * @param symbol  transition symbol
+         * @param state   destination state
+         */
         public Transition(byte symbol, State state)
         {
             this.symbol = symbol;
             this.state = state;
         }
 
+        /**
+         * Comparison method, defines a sort order for transitions.
+         * If the symbols of the two transitions differ, their ordering decides the
+         * ordering of the transitions. If the symbols are equal, the ids of the
+         * destination states is used. If those are also equal, the transitions
+         * are equal.
+         *
+         * @param other  transition to compare this object to
+         * @return  -1, 0 or 1 if this transition is less than, equal to or greater than the other
+         * @throws NullPointerException  if other is null
+         */
         @Override
         public int compareTo(Transition other)
         {
@@ -36,17 +89,72 @@ public class Automaton
             return 0;
         }
 
+        /**
+         * Override equals() to make it consistent with compareTo().
+         *
+         * @param otherObject  object to check for eqaulity
+         * @return  true if otherObject is not null, and is a Transition with the same symbol
+         *          and destination state
+         */
+        @Override
+        public boolean equals(Object otherObject)
+        {
+            return (otherObject instanceof Transition) && (compareTo((Transition)otherObject) == 0);
+        }
+
+        /**
+         * Override hashCode() for Transition objects, so that the hash codes are equal
+         * for two Transitions for which equals() returns true.
+         *
+         * @return  hash code for the Transition
+         */
+        @Override
+            public int hashCode()
+        {
+            return 256 * state.id + (symbol & 0xff);
+        }
+
+        /**
+         * Return a representation of this transition.
+         *
+         * @return  a String object representing the transition
+         */
         public String toString()
         {
             return "(" + BString.byteToString(symbol) + "->S" + state.getId() + ")";
         }
     }
 
+    /**
+     * Helper class for transition lists.
+     */
     private class TransitionList
         implements Comparable<TransitionList>
     {
         private ArrayList<Transition> list = new ArrayList<>();
 
+        /**
+         * Define a natural ordering for transition lists. Two states are equal iff
+         *  - they are both final or non-final
+         *  - they have the same number of transitions
+         *  - corresponding transitions have the same symbols
+         *  - corresponding transitions lead to states with the same right languages
+         * (Daciuk et.al, page 5)
+         *
+         * In practice, this means the two lists have the same number of Transtion objects, and
+         * these objects are equal. (Final/non-final status is represented by a special transition
+         * using FINAL_SYMBOL.)
+         *
+         * Given that the automaton is constructed from sorted input strings, the transactions
+         * on the list are guaranteed to be sorted in increasing order.
+         *
+         * Of non-equal transition lists, the one containing less transitions comes first in the
+         * ordering. If the lists are of equal length, the first differing transition decides.
+         *
+         * @param other  transition list to compare this object to
+         * @return  -1, 0 or 1 if this transition list is less than, equal to or greater than the other
+         * @throws NullPointerException  if other is null
+         */
         @Override
         public int compareTo(TransitionList other)
         {
@@ -60,28 +168,49 @@ public class Automaton
             return 0;
         }
 
+        /**
+         * Override equals() to make it consistent with compareTo().
+         *
+         * @param otherObject  object to check for eqaulity
+         * @return  true if otherObject is not null, and is a TransitionList with the same Transitions
+         */
         @Override
         public boolean equals(Object other)
         {
-            if (!(other instanceof TransitionList)) return false;
-            return compareTo((TransitionList)other) == 0;
+            return (other instanceof TransitionList) && (compareTo((TransitionList)other) == 0);
         }
 
+        /**
+         * Override hashCode() for TransitionList objects, so that the hash codes are equal
+         * for two TransitionLists for which equals() returns true.
+         *
+         * @return  hash code for the TransitionList
+         */
         @Override
         public int hashCode()
         {
-            int code = 1;
+            int hash = 0;
             for (Transition t : list) {
-                code = (code * 17 + t.symbol + 256 * t.state.hashCode()) % 67108864;
+                hash = hash * 17 + t.hashCode();
             }
-            return code;
+            return hash;
         }
 
+        /**
+         * Returns true if the transition list is empty (contains no transitions).
+         *
+         * @return true if the transition list contains no transitions
+         */
         public boolean isEmpty()
         {
             return list.size() == 0;
         }
 
+        /**
+         * Returns the size of the transition list (contained number of transitions).
+         *
+         * @return the number of transitions on the list
+         */
         public int size()
         {
             return list.size();
@@ -203,8 +332,16 @@ public class Automaton
         @Override
         public boolean equals(Object other)
         {
+            if (this == other) return true;
             if (!(other instanceof State)) return false;
+
             return getTransitionList().equals(((State)other).getTransitionList());
+        }
+
+        @Override
+        public int hashCode()
+        {
+            return getTransitionList().hashCode();
         }
     }
 

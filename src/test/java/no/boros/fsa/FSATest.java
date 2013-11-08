@@ -92,8 +92,8 @@ public class FSATest
         FSA fsa = a.getFSA();
         System.out.println("written:");
         fsa.dumpDict();
-        fsa.write("testfsa.fsa");
-        FSA fsa2 = FSA.read("testfsa.fsa");
+        fsa.write("target/testfsa.fsa");
+        FSA fsa2 = FSA.read("target/testfsa.fsa");
         System.out.println("read:");
         fsa2.dumpDict();
     }
