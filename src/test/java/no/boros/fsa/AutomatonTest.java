@@ -39,8 +39,8 @@ public class AutomatonTest
 
         try {
             a.insertSortedString("xxx foobar");
-            fail("Should have thrown IllegalArgumentException.");
-        } catch (IllegalArgumentException e) {
+            fail("Should have thrown IllegalStateException.");
+        } catch (IllegalStateException e) {
             // ok
         }
     }
@@ -60,7 +60,8 @@ public class AutomatonTest
         }
     }
 
-    @Ignore @Test
+    @Ignore
+    @Test
     public void testGetFSA()
         throws Exception
     {
@@ -80,6 +81,7 @@ public class AutomatonTest
         }
 
         FSA fsa = a.getFSA();
+        fsa.write("words.fsa");
     }
 
 

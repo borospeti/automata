@@ -121,6 +121,7 @@ public class Automaton
          *
          * @return  a String object representing the transition
          */
+        @Override
         public String toString()
         {
             return "(" + BString.byteToString(symbol) + "->S" + state.getId() + ")";
@@ -218,17 +219,36 @@ public class Automaton
             return list.size();
         }
 
+        /**
+         * Returns the transition at the specified position in the list.
+         *
+         * @param i  index of transition to return
+         * @return  the transition at the specified position
+         * @throws IndexOutOfRangeException if the index is out of range
+         */
         public Transition get(int i)
         {
             return list.get(i);
         }
 
+        /**
+         * Returns the last transition in the list, or null if the list contains no transitions.
+         *
+         * @return  the transition at the last position, or null if the list is empty
+         */
         public Transition getLast()
         {
             if (list.size() > 0) return list.get(list.size() - 1);
             return null;
         }
 
+        /**
+         * Find the transition corresponding to the specified symbol. If no such transition
+         * is found in the list, null is returned.
+         *
+         * @param sy  the symbol to look up
+         * @return  the transition correcponding to the symbol, or null if no such transition is found
+         */
         public Transition find(byte sy)
         {
             for (Transition t : list) {
@@ -237,16 +257,33 @@ public class Automaton
             return null;
         }
 
+        /**
+         * Append a new transition at the end of the list.
+         *
+         * @param symbol  transition symbol
+         * @param state   destination state
+         */
         public void append(byte symbol, State state)
         {
             list.add(new Transition(symbol, state));
         }
 
+        /**
+         * Return the list of transitions as a collection.
+         *
+         * @return  a collection of the transitions
+         */
         public Collection<Transition> getTransitions()
         {
             return list;
         }
 
+        /**
+         * Returns a string representation of the transition list.
+         *
+         * @return  a String object representing the transition list.
+         */
+        @Override
         public String toString()
         {
             StringBuffer buf = new StringBuffer("[");
@@ -261,26 +298,40 @@ public class Automaton
         }
     }
 
+    /**
+     * Helper class for representing a state in the automaton.
+     */
     private class State
     {
         private final int id;
         private final TransitionList transitionList = new TransitionList();
 
+        /**
+         * Construct a state object with an empty transition list.
+         */
         public State()
         {
             id = stateCount++;
         }
 
+        /**
+         * Returns true if the state is a final state, i.e. it has a transition corresponding
+         * to the FINAL_SYMBOL.
+         *
+         * @return  true is the state is final, false otherwise
+         */
         public boolean isFinal()
         {
             return getChild(FINAL_SYMBOL) != null;
         }
 
-        public boolean hasChildren()
-        {
-            return !transitionList.isEmpty();
-        }
-
+        /**
+         * Returns true child corresponding to the specified symbol, or null if no such
+         * child exists.
+         *
+         * @param sy  transition symbol
+         * @return  the child corresponding to the specified symbol, or null if no such child exists
+         */
         public State getChild(byte sy)
         {
             Transition t = transitionList.find(sy);
@@ -288,6 +339,12 @@ public class Automaton
             return t.state;
         }
 
+        /**
+         * Returns the destination state corresponding to the last transition in the
+         * transition list. FINAL_SYMBOL is not considered as a valid transition in this context.
+         *
+         * @return  the last (valid) child
+         */
         public State getLastChild()
         {
             Transition t = transitionList.getLast();
@@ -295,6 +352,11 @@ public class Automaton
             return null;
         }
 
+        /**
+         * Update the last child (the last transition on the transition list), if such a child exists.
+         *
+         * @param st  new destination state for the last transition
+         */
         public void updateLastChild(State st)
         {
             Transition t = transitionList.getLast();
@@ -303,6 +365,12 @@ public class Automaton
             }
         }
 
+        /**
+         * Add an empty child - a transition to a new empty state - at the end of the transition list.
+         *
+         * @param sy  new transition symbol
+         * @return  the newly created empty state
+         */
         public State addEmptyChild(byte sy)
         {
             State child = new State();
@@ -310,27 +378,56 @@ public class Automaton
             return child;
         }
 
+        /**
+         * Add the specified child - a transition to the given state - at the end of the transition list.
+         *
+         * @param sy     new transition symbol
+         * @param state  destination state
+         * @return  the child state
+         */
         public State addChild(byte sy, State child)
         {
             transitionList.append(sy, child);
             return child;
         }
 
+        /**
+         * Returns the transition list of this state.
+         *
+         * @return  the state's transition list
+         */
         public TransitionList getTransitionList()
         {
             return transitionList;
         }
 
+        /**
+         * Returns the ID of this state.
+         *
+         * @return  the state's ID
+         */
         public int getId()
         {
             return id;
         }
 
+        /**
+         * Returns a string representation of this state.
+         *
+         * @return  a String object representing this state
+         */
+        @Override
         public String toString()
         {
             return "S" + id + ":" + transitionList.toString();
         }
 
+        /**
+         * Two states are by definition equal iff their transition lists are equal.
+         *
+         * @param other  the other state to compare this state to
+         * @return  true if the two states have equivalent transition lists
+         */
         @Override
         public boolean equals(Object other)
         {
@@ -340,6 +437,11 @@ public class Automaton
             return getTransitionList().equals(((State)other).getTransitionList());
         }
 
+        /**
+         * Override hash code so it returns the same code for equivalent states.
+         *
+         * @return  hash code
+         */
         @Override
         public int hashCode()
         {
@@ -347,60 +449,101 @@ public class Automaton
         }
     }
 
-
+    /**
+     * A mapping of transition lists to states. Also, in the end a register of all states.
+     */
     private HashMap<TransitionList, State> register = new HashMap<>();
+
+    /**
+     * The start state of the automaton.
+     */
     private State qStart = new State();
-    private State qFinal = null;
+
+    /**
+     * The ultimate final state of the automaton (final states define a transition to this state
+     * corresponding to the FINAL_SYMBOL).
+     */
+    private State qFinal = null; // Created when first final state is reached.
+
+    /**
+     * The previus input which have been added to the automaton.
+     */
     private BString previousInput = null;
+
+    /**
+     * Finalized state; after the automaton has been finalized (minimized) it is not possible to
+     * add further input strings.
+     */
     private boolean finalized = false;
-    // PackedAutomaton packed;       /**< Packed automaton.             */
 
-    private int getCPLength(BString input)
+    /**
+     * POJO for registering common prefix (length and last state).
+     */
+    private static class CommonPrefix
     {
-        int l = 0;
-        State state = qStart;
-        while (l < input.length()) {
-            state = state.getChild(input.byteAt(l));
-            if (state == null) return l;
-            l++;
+        public final int length;
+        public final State lastState;
+
+        public CommonPrefix(int l, State s)
+        {
+            length = l;
+            lastState = s;
         }
-        return l;
     }
 
-    private State getCPLastState(BString input)
+    /**
+     * Determine the length and last state of the common prefix between
+     * the current input and the automaton which is already constructed.
+     *
+     * @param input  the current input string
+     * @return  the length and last state of the common prefix (CommonPrefix object)
+     */
+    private CommonPrefix getCommonPrefix(BString input)
     {
-        int l = 0;
+        int i = 0;
         State state = qStart;
-        while (l < input.length()) {
-            State next = state.getChild(input.byteAt(l));
-            if (next == null) return state;
-            state=next;
-            l++;
+        while (i < input.length()) {
+            State next = state.getChild(input.byteAt(i));
+            if (next == null) return new CommonPrefix(i, state);
+            state = next;
+            ++i;
         }
-        return state;
+        return new CommonPrefix(i, state);
     }
 
+    /**
+     * Recursively replace or register the states of the automaton. Only the last
+     * child of each state can possibly be changed. After the call has recursively
+     * replaced or registered grand*children, the last child is replaced if there is
+     * another state with an equivalent transition list already in the register, or
+     * it is added to the register otherwise.
+     *
+     * Registered states are not modified any more.
+     *
+     * @param state  the state to recursively replace or register
+     */
     private void replaceOrRegister(State state)
     {
         State child = state.getLastChild();
-        if (child != null) {
-            //System.out.println("DEBUG: examining=" + state);
-            if (child.hasChildren()) {
-                replaceOrRegister(child);
-            }
-            State otherChild = register.get(child.getTransitionList());
-            //System.out.println("DEBUG: " + otherChild + " " + (otherChild != null && otherChild.equals(child) ? "=" : "!") + "= " + child);
-            //System.out.println("DEBUG: before=" + state);
-            if (otherChild != null && otherChild.equals(child)) {
-                state.updateLastChild(otherChild);
-            }
-            else {
-                register.put(child.getTransitionList(), child);
-            }
-            //System.out.println("DEBUG: after=" + state);
+        if (child == null) return; // the state has no children
+
+        replaceOrRegister(child);
+
+        State otherChild = register.get(child.getTransitionList());
+        if (otherChild != null && otherChild.equals(child)) {
+            state.updateLastChild(otherChild);
+        }
+        else {
+            register.put(child.getTransitionList(), child);
         }
     }
 
+    /**
+     * Add states for a new suffix in the automaton.
+     *
+     * @param state  the state at which the suffix transitions start
+     * @param suffix  the suffix string
+     */
     private void addSuffix(State state, BString suffix)
     {
         State current = state;
@@ -411,6 +554,7 @@ public class Automaton
             current = child;
         }
 
+        // Add a final transition at the end of the suffix (indication that this state is a final state).
         if (null == qFinal) {
             qFinal = current.addEmptyChild(FINAL_SYMBOL);
         } else {
@@ -418,15 +562,31 @@ public class Automaton
         }
     }
 
+    /**
+     * Convenience method, which takes a Java String as parameter and converts it to
+     * BString before inserting it to the automaton.
+     *
+     * @param input  the input string (String object)
+     * @throws IllegalArgumentException  if the input string in not in proper sorted order
+     * @throws IllegalStateException  if an attempt is made to insert a new string into a finalized automaton
+     */
     public void insertSortedString(String input)
     {
         insertSortedString(new BString(input));
     }
 
+    /**
+     * Insert a sorted string into the automaton. The sorting order must be as defined by
+     * the natural ordering of the BString class.
+     *
+     * @param input  the input string
+     * @throws IllegalArgumentException  if the input string in not in proper sorted order
+     * @throws IllegalStateException  if an attempt is made to insert a new string into a finalized automaton
+     */
     public void insertSortedString(BString input)
     {
         if (finalized) {
-            throw new IllegalArgumentException("Automaton is finalized, cannot insert more strings.");
+            throw new IllegalStateException("Automaton is finalized, cannot insert more strings.");
         }
 
         if (null != previousInput) {
@@ -440,25 +600,34 @@ public class Automaton
         }
         previousInput = input;
 
-        State lastState = getCPLastState(input);
-        BString currentSuffix = input.substring(getCPLength(input), input.length());
-
-        if (lastState.hasChildren()) {
-            replaceOrRegister(lastState);
-        }
-        addSuffix(lastState,currentSuffix);
+        CommonPrefix commonPrefix = getCommonPrefix(input);
+        BString currentSuffix = input.substring(commonPrefix.length, input.length());
+        replaceOrRegister(commonPrefix.lastState);
+        addSuffix(commonPrefix.lastState, currentSuffix);
     }
 
+    /**
+     * Finalizes (minimizes) the automaton. This will recursively register all states starting from
+     * the start state, so further insertion of strings into this automaton will not be
+     * possible. If the automaton is already finalized, the method has no effect.
+     */
     public void finalize()
     {
         if (!finalized) {
             replaceOrRegister(qStart);
+            // Complete the register by registering the start state as well.
             register.put(qStart.getTransitionList(), qStart);
             finalized = true;
         }
     }
 
-
+    /**
+     * Create a compact FSA representation of the minimized automaton. The compact representation
+     * stores the states (transition lists), which are sparse arrays, packed together. The method
+     * does not guarantee a minimal representation, but in most cases the pack ratio is over 99%.
+     *
+     * @return  the compact FSA representation of the automaton
+     */
     public FSA getFSA()
     {
         finalize();
