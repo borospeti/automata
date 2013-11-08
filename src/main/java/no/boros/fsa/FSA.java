@@ -189,16 +189,34 @@ public class FSA
     }
 
 
-    // mainly for debugging
+    //
+    // The following methods are mainly for testing and debugging.
+    //
 
-
-    public void dumpDict()
+    /**
+     * Return an ArrayList of Strings which represent the dictionary of this automaton.
+     *
+     * Note that for large automata the dictionary may potentially much larger in size.
+     *
+     * @return  the dictionary of the automaton
+     */
+    public ArrayList<String> getDictionary()
     {
+        ArrayList<String> dict = new ArrayList<>();
         ArrayList<Byte> word = new ArrayList<>();
-        dumpDict(startState, word);
+        getDictionary(dict, startState, word);
+        return dict;
     }
 
-    private void dumpDict(int state, ArrayList<Byte> word)
+    /**
+     * Recursively create the right language of the specified state,
+     * with the given prefix.
+     *
+     * @param dict   the ArrayList for collecting the dictionary entries
+     * @param state  starting state
+     * @param word   prefix
+     */
+    private void getDictionary(ArrayList<String> dict, int state, ArrayList<Byte> word)
     {
         for (int symbol = 1; symbol < 256; ++symbol) {
             if ((transSymbols[state + symbol] & 0xff) == symbol) {
@@ -208,18 +226,16 @@ public class FSA
                         for (int i = 0; i < word.size(); ++i) {
                             temp[i] = word.get(i);
                         }
-                        System.out.println(new String(temp, "utf-8"));
+                        dict.add(new String(temp, "utf-8"));
                     } catch (java.io.UnsupportedEncodingException e) {
                         throw new RuntimeException(e);
                     }
                 } else {
                     word.add((byte)symbol);
-                    dumpDict(transStates[state + symbol], word);
+                    getDictionary(dict, transStates[state + symbol], word);
                     word.remove(word.size() - 1);
                 }
             }
         }
     }
-
-
 }

@@ -1,5 +1,6 @@
 package no.boros.fsa;
 
+import java.util.ArrayList;
 import java.io.IOException;
 
 import org.junit.Test;
@@ -17,7 +18,13 @@ public class FSATest
         a.insertSortedString("mufc böfc");
         a.insertSortedString("mufc");
         FSA fsa = a.getFSA();
-        fsa.dumpDict();
+
+        ArrayList<String> dict = fsa.getDictionary();
+        assertEquals(4, dict.size());
+        assertEquals("böfc mufc", dict.get(0));
+        assertEquals("böfc", dict.get(1));
+        assertEquals("mufc böfc", dict.get(2));
+        assertEquals("mufc", dict.get(3));
     }
 
     @Test
@@ -90,12 +97,15 @@ public class FSATest
         a.insertSortedString("mufc böfc");
         a.insertSortedString("mufc");
         FSA fsa = a.getFSA();
-        System.out.println("written:");
-        fsa.dumpDict();
+        ArrayList<String> dict = fsa.getDictionary();
         fsa.write("target/testfsa.fsa");
         FSA fsa2 = FSA.read("target/testfsa.fsa");
-        System.out.println("read:");
-        fsa2.dumpDict();
+        ArrayList<String> dict1 = fsa2.getDictionary();
+        assertEquals(4, dict.size());
+        assertEquals(dict.size(), dict1.size());
+        for (int i = 0; i < dict.size(); ++i) {
+            assertEquals(dict.get(i), dict1.get(i));
+        }
     }
 
 }
