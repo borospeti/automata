@@ -8,17 +8,42 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 
+/**
+ * A compact representation of a deterministic finite state automaton.
+ */
 public class FSA
 {
+    /**
+     * Magic number identifying .fsa files.
+     */
     private static final int FSA_MAGIC = 0x62D80AB5;
+
+    /**
+     * Chunk size when writing / reading fsa files (in terms of entries, which may be 1 or 4 bytes).
+     */
     private static final int CHUNK_SIZE = 1048576;
 
+    /**
+     * Transition symbols and states. A valid transition from state ST with symbol SY exists iff
+     * transSymbols[ST + SY] == SY. In this case, transStates[ST + SY] gives the destination state.
+     * transSymbols[ST + FINAL_SYMBOL] == FINAL_SYMBOL means that the state is a final state.
+     */
     private final byte[] transSymbols;
     private final int[] transStates;
+
+    /**
+     * FSA start state.
+     */
     private final int startState;
 
     /**
-     * Package-private constructor.
+     * Package-private constructor. The only two ways to construct an FSA is either from
+     * a finalized Automaton via the getFSA() method, or reading it from a file with
+     * FSA.read(...).
+     *
+     * @param symbols  compacted symbol array
+     * @param states   compacted state array
+     * @param start    start state
      */
     FSA(byte[] symbols, int[] states, int start)
     {
@@ -27,6 +52,9 @@ public class FSA
         startState = start;
     }
 
+    /**
+     *
+     */
     public class State
     {
         int state = startState;
@@ -34,6 +62,14 @@ public class FSA
 
         private State()
         {
+        }
+
+        public State clone()
+        {
+            State cl = new State();
+            cl.state = state;
+            cl.valid = valid;
+            return cl;
         }
 
         public boolean isValid()
