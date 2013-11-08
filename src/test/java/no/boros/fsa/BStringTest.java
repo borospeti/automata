@@ -23,16 +23,43 @@ public class BStringTest
         BString bFoo = new BString(foo);
         BString bFoo1 = bFoo.substring(0,5);
         BString bFoo2 = bFoo.substring(6,10);
+        BString bFoo3 = bFoo.substring(3,3);
+        BString bFoo4 = bFoo.substring(3,7);
 
         assertEquals(10, bFoo.length());
         assertEquals(5, bFoo1.length());
         assertEquals(4, bFoo2.length());
+        assertEquals(0, bFoo3.length());
+        assertEquals(4, bFoo4.length());
 
         String sFoo1 = bFoo1.toString();
         String sFoo2 = bFoo2.toString();
+        String sFoo3 = bFoo3.toString();
+        String sFoo4 = bFoo4.toString();
 
         assertEquals("böfc", sFoo1);
         assertEquals("mufc", sFoo2);
+        assertEquals("", sFoo3);
+        assertEquals("fc m", sFoo4);
+
+        try {
+            BString bFail = bFoo.substring(-5,5);
+            fail("Should have thrown IndexOutOfBoundsException.");
+        } catch (IndexOutOfBoundsException e) {
+            // ok
+        }
+        try {
+            BString bFail = bFoo.substring(5,15);
+            fail("Should have thrown IndexOutOfBoundsException.");
+        } catch (IndexOutOfBoundsException e) {
+            // ok
+        }
+        try {
+            BString bFail = bFoo.substring(7,3);
+            fail("Should have thrown IndexOutOfBoundsException.");
+        } catch (IndexOutOfBoundsException e) {
+            // ok
+        }
     }
 
     @Test
@@ -72,6 +99,12 @@ public class BStringTest
         assertEquals(99, bFoo.byteAt(9));
         try {
             assertEquals(0, bFoo.byteAt(10));
+            fail("Should have thrown IndexOutOfBoundsException.");
+        } catch (IndexOutOfBoundsException e) {
+            // ok
+        }
+        try {
+            assertEquals(0, bFoo.byteAt(-5));
             fail("Should have thrown IndexOutOfBoundsException.");
         } catch (IndexOutOfBoundsException e) {
             // ok
