@@ -11,6 +11,8 @@ import java.util.Map;
  * Implementation of Daciuk et.al.'s algorithm,
  * "Incremental Construction of Minimal Acyclic Finite-State Automata"
  * (http://www.eti.pg.gda.pl/~jandac/daciuk98.ps.gz)
+ * Currently, this implementation suports automata construction from sorted
+ * data only.
  *
  * This class is not thread safe, and meant to be used single threaded only.
  */
