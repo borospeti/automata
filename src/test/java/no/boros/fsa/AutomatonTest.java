@@ -24,9 +24,12 @@ public class AutomatonTest
         a.insertSortedString("mufc");
         a.finalize();
 
-        // a.dump();
-        // a.traverse();
-        a.dumpDict();
+        ArrayList<String> dict = a.getDictionary();
+        assertEquals(4, dict.size());
+        assertEquals("böfc mufc", dict.get(0));
+        assertEquals("böfc", dict.get(1));
+        assertEquals("mufc böfc", dict.get(2));
+        assertEquals("mufc", dict.get(3));
     }
 
     @Test

@@ -680,10 +680,13 @@ public class Automaton
     }
 
 
+    //
+    // The following methods are mainly for testing and debugging.
+    //
 
-    // mostly for debugging
-
-
+    /**
+     * Dump a string representation of the automaton to System.out.
+     */
     public void dump()
     {
         System.out.println("Start: " + qStart);
@@ -693,27 +696,30 @@ public class Automaton
         }
     }
 
-    public void traverse()
+    /**
+     * Return an ArrayList of Strings which represent the dictionary of this automaton.
+     *
+     * Note that for large automata the dictionary may potentially much larger in size.
+     *
+     * @return  the dictionary of the automaton
+     */
+    public ArrayList<String> getDictionary()
     {
-        dfs(qStart);
-    }
-
-    private void dfs(State state)
-    {
-        System.out.println(state);
-        TransitionList tlist = state.getTransitionList();
-        for (Transition t : tlist.getTransitions()) {
-            dfs(t.state);
-        }
-    }
-
-    public void dumpDict()
-    {
+        ArrayList<String> dict = new ArrayList<>();
         ArrayList<Byte> word = new ArrayList<>();
-        dumpDict(qStart, word);
+        getDictionary(dict, qStart, word);
+        return dict;
     }
 
-    private void dumpDict(State state, ArrayList<Byte> word)
+    /**
+     * Recursively create the right language of the specified state,
+     * with the given prefix.
+     *
+     * @param dict   the ArrayList for collecting the dictionary entries
+     * @param state  starting state
+     * @param word   prefix
+     */
+    private void getDictionary(ArrayList<String> dict, State state, ArrayList<Byte> word)
     {
         TransitionList tlist = state.getTransitionList();
         for (Transition t : tlist.getTransitions()) {
@@ -723,20 +729,15 @@ public class Automaton
                     for (int i = 0; i < word.size(); ++i) {
                         temp[i] = word.get(i);
                     }
-                    System.out.println(new String(temp, "utf-8"));
+                    dict.add(new String(temp, "utf-8"));
                 } catch (java.io.UnsupportedEncodingException e) {
                     throw new RuntimeException(e);
                 }
             } else {
                 word.add(t.symbol);
-                dumpDict(t.state, word);
+                getDictionary(dict, t.state, word);
                 word.remove(word.size() - 1);
             }
         }
-    }
-
-    public int numRegStates()
-    {
-        return register.size();
     }
 }
