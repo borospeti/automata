@@ -72,8 +72,8 @@ public class BStringTest
         assertEquals(99, bFoo.byteAt(9));
         try {
             assertEquals(0, bFoo.byteAt(10));
-            fail("Should have thrown IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
+            fail("Should have thrown IndexOutOfBoundsException.");
+        } catch (IndexOutOfBoundsException e) {
             // ok
         }
     }
