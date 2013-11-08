@@ -14,7 +14,7 @@ package no.boros.fsa;
  * substring is a valid UTF-8 string.
  */
 class BString
-    implements Comparable
+    implements Comparable<BString>
 {
     private final byte[] bytes;
     private final int start;
@@ -158,13 +158,17 @@ class BString
      * Compare this BString to another BSTring. The comparison is done byte for byte,
      * until the two stings differ at one position, in which case the comparison result
      * is the the result of the comparison of the actual bytes. If all bytes are equal
-     * until
+     * until the end of one of the bstrings is reached, the longer string comes first
+     * in the ordering (i.e. "ballpark" < "ball"). If both strings represent the same
+     * sequence of bytes, they are equal.
+     *
+     * @param other  BString object to compare this object to
+     * @return  -1, 0, 1 if the this object is less than, equal to, or greater than the other object
+     * @throws NullPointerException  if other is null
      */
     @Override
-    public int compareTo(Object otherObject)
+    public int compareTo(BString other)
     {
-        BString other = (BString)otherObject;
-
         // same object
         if (other == this) return 0;
 
@@ -200,7 +204,7 @@ class BString
     public boolean equals(Object otherObject)
     {
         if (this == otherObject) return true;
-        return (otherObject instanceof BString) && (compareTo(otherObject) == 0);
+        return (otherObject instanceof BString) && (compareTo((BString)otherObject) == 0);
     }
 
     /**
