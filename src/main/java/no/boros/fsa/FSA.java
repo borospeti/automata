@@ -53,17 +53,38 @@ public class FSA
     }
 
     /**
+     * Class for performing lookups in the FSA. A typical use pattern is as follows:
      *
+     *     FSA fsa = FSA.read("very_important_words.fsa");
+     *     ...
+     *     FSA.State state = fsa.start();
+     *     String word = "addlepated";
+     *     state.consume(word);
+     *     if (state.isFinal()) {
+     *         System.out.println("'" + word + "' is an important word.");
+     *     } else if (state.isValid()) {
+     *         System.out.println("'" + word + "' is the prefix of an important word.");
+     *     }
      */
     public class State
     {
         int state = startState;
         boolean valid = true;
 
+        /**
+         * Private default constructor.
+         * Use the FSA.start() or State.clone() to get a new State instance.
+         */
         private State()
         {
         }
 
+        /**
+         * Clone a state to a new object. This is useful if one needs to test several
+         * endings with a common prefix.
+         *
+         * @return  new state object which is an exact copy of the original
+         */
         public State clone()
         {
             State cl = new State();
@@ -72,53 +93,120 @@ public class FSA
             return cl;
         }
 
+        /**
+         * Returns true if the current state is valid, i.e. the symbols consumed
+         * so far constitute a prefix of a string which is accepted bye the automaton
+         * (possibly with an empty suffix).
+         *
+         * @return  true if the state is valid
+         */
         public boolean isValid()
         {
             return valid;
         }
 
+        /**
+         * Returns true if the current state is final (aka accepting) state, that is
+         * the symbols consumed so far constitute a string which is accepted bye the
+         * automaton.
+         *
+         * @return  true if the state is final
+         */
         public boolean isFinal()
         {
             return valid && (transSymbols[state + (Automaton.FINAL_SYMBOL & 0xff)] == Automaton.FINAL_SYMBOL);
         }
 
-        public void consume(byte symbol)
+        /**
+         * Consume a single symbol - make a transition to the next state given
+         * the selected symbol.
+         *
+         * @param symbol  transition symbol
+         * @return  true if the new state is valid
+         * @throws IllegalArgumentException  if the symbol is 0x00 or 0xFF, which are reserved (and also
+         *                                   illegal as part of an UTF-8 encoded string)
+         */
+        public boolean consume(byte symbol)
         {
-            if (!valid) return;
+            if (symbol == 0 || symbol == -1) {
+                throw new IllegalArgumentException("Bytes 0x00 and 0xFF are reserved for internal use.");
+            }
 
-            if (transSymbols[state + (symbol & 0xff)] == symbol) {
+            if (valid && transSymbols[state + (symbol & 0xff)] == symbol) {
                 state = transStates[state + (symbol & 0xff)];
             } else {
                 valid = false;
             }
+
+            return valid;
         }
 
-        public void consume(BString bString)
+        /**
+         * Consume a string of symbols - make a transition to the next state given
+         * the selected symbol until the end of the string is reached, or a transition
+         * to an invalid state is made (string is not a valid prefix anymore).
+         *
+         * @param bString  transition string
+         * @return  true if the whole string has been consumed and the new state is valid
+         * @throws IllegalArgumentException  if the string contains a 0x00 or 0xFF byte, which are reserved (and also
+         *                                   illegal as part of an UTF-8 encoded string)
+         */
+        public boolean consume(BString bString)
         {
-            if (!valid) return;
+            if (!valid) return false;
 
             for (int i = 0; i < bString.length(); ++i) {
                 byte symbol = bString.byteAt(i);
+                if (symbol == 0 || symbol == -1) {
+                    throw new IllegalArgumentException("Bytes 0x00 and 0xFF are reserved for internal use.");
+                }
                 if (transSymbols[state + (symbol & 0xff)] == symbol) {
                     state = transStates[state + (symbol & 0xff)];
                 } else {
                     valid = false;
-                    return;
+                    break;
                 }
             }
+
+            return valid;
         }
 
-        public void consume(String string)
+        /**
+         * Convenience method to consume Java Strings directly. The String is converted
+         * to an UTF-8 BString.
+         * @see FSA.State#consume(BString) consume(BString)
+         *
+         * @param string  transition string
+         * @return  true if the whole string has been consumed and the new state is valid
+         */
+        public boolean consume(String string)
         {
-            consume(new BString(string));
+            return consume(new BString(string));
         }
     }
 
+    /**
+     * Initialize a new FSA.State to the start state of the automaton.
+     *
+     * @return  a new FSA.State initialized to the start state of the automaton
+     */
     public State start()
     {
         return new State();
     }
 
+    /**
+     * Convenience method to look up an entire string. It is equivalent to
+     *     State state = FSA.start();
+     *     state.consume(bString);
+     *     return state.isFinal();
+     * @see FSA.State#consume(BString) consume(BString)
+     *
+     * @param bString  byte string to look up
+     * @return  true if the string is accepted by the automaton
+     * @throws IllegalArgumentException  if the string contains a 0x00 or 0xFF byte, which are reserved (and also
+     *                                   illegal as part of an UTF-8 encoded string)
+     */
     public boolean lookup(BString bString)
     {
         State state = start();
@@ -126,11 +214,25 @@ public class FSA
         return state.isFinal();
     }
 
+    /**
+     * Convenience method to look up an entire Java String. The string is converted
+     * to an UTF-8 byte string.
+     * @see FSA#lookup(BString) lookup(BString)
+     *
+     * @param string  Java string to look up
+     * @return  true if the string is accepted by the automaton
+     */
     public boolean lookup(String string)
     {
         return lookup(new BString(string));
     }
 
+    /**
+     * Write the compact automaton to a file.
+     *
+     * @param fileName  the name of the file
+     * @throws IOException  if the operation failed
+     */
     public void write(String fileName)
         throws IOException
     {
@@ -173,6 +275,13 @@ public class FSA
         }
     }
 
+    /**
+     * Read a compact automaton form a file into a newly created FSA object.
+     *
+     * @param fileName  the name of the file
+     * @return  the new FSA object
+     * @throws IOException  if the operation failed
+     */
     public static FSA read(String fileName)
         throws IOException
     {
