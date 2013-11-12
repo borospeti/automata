@@ -1,0 +1,32 @@
+
+Deterministic finite state automata library based on Daciuk et.al.'s algorithm, "Incremental Construction of Minimal Acyclic Finite-State Automata" (http://www.eti.pg.gda.pl/~jandac/daciuk98.ps.gz).
+
+Usage examples:
+
+    Automaton a = new Automaton();
+    a.insertSortedString("böfc mufc");
+    a.insertSortedString("böfc");
+    a.insertSortedString("mufc böfc");
+    a.insertSortedString("mufc");
+    FSA fsa = a.getFSA();
+    fsa.write("myfsa.fsa");
+
+    ...
+
+    FSA fsa = FSA.read("myfsa.fsa");
+    if (fsa.lookup(someString)) {
+        // someString is accepted
+        ...
+    }
+
+    FSA.State state = FSA.start();
+    state.consume("ele");
+    if (state.isValid()) {
+        // "ele" is a valid prefix
+        ...
+    }
+    state.consume("phant");
+    if (state.isFinal()) {
+        // "elephant" is accepted
+        ...
+    }
