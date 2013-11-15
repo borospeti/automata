@@ -183,6 +183,59 @@ public class FSA
         {
             return consume(new BString(string));
         }
+
+        /**
+         * Test if consume(symbol) would lead to a final state. The current state is not
+         * changed by this method.
+         *
+         * @param symbol  transition symbol
+         * @return  true if symbol would lead to a final state
+         * @throws IllegalArgumentException  if the symbol is 0x00 or 0xFF, which are reserved (and also
+         *                                   illegal as part of an UTF-8 encoded string)
+         */
+        public boolean test(byte symbol)
+        {
+            if (!valid) return false;
+
+            State testState = clone();
+            testState.consume(symbol);
+            return testState.isFinal();
+        }
+
+        /**
+         * Test if consume(bString) would lead to a final state. The current state is not
+         * changed by this method.
+         *
+         * @param symbol  transition string
+         * @return  true if the string would lead to a final state
+         * @throws IllegalArgumentException  if the string contains a 0x00 or 0xFF byte, which are reserved
+         *                                   (and also illegal as part of an UTF-8 encoded string)
+         */
+        public boolean test(BString bString)
+        {
+            if (!valid) return false;
+
+            State testState = clone();
+            testState.consume(bString);
+            return testState.isFinal();
+        }
+
+        /**
+         * Test if consume(string) would lead to a final state. The current state is not
+         * changed by this method.
+         *
+         * @param symbol  transition string
+         * @return  true if the string would lead to a final state
+         */
+        public boolean test(String string)
+        {
+            if (!valid) return false;
+
+            State testState = clone();
+            testState.consume(string);
+            return testState.isFinal();
+        }
+
     }
 
     /**
