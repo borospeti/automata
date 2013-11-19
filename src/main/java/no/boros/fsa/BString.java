@@ -13,7 +13,7 @@ package no.boros.fsa;
  * boundaries into consideration, so it is not guaranteed that the resulting
  * substring is a valid UTF-8 string.
  */
-class BString
+public class BString
     implements Comparable<BString>
 {
     private final byte[] bytes;
@@ -51,7 +51,7 @@ class BString
     }
 
     /**
-     * Private constructor, used bye the substring operation.
+     * Private constructor, used by the substring operation.
      *
      * @param base   byte array backing this bstring
      * @param start  index of first byte of the bstring within the array
