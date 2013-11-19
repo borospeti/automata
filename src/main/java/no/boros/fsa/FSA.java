@@ -292,6 +292,7 @@ public class FSA
         RandomAccessFile out = null;
         try {
             out = new RandomAccessFile(fileName, "rw");
+            out.setLength(0);
             FileChannel file = out.getChannel();
 
             long offset = 0L;
